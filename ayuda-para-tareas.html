@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ayuda para tareas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#fbfcfe;--grid:#dce6f2;--ink:#1f3a93;--text:#1d2433;--red:#d9534f;--hl:#ffe680;--card:#fff}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font:17px/1.55 "Atkinson Hyperlegible",system-ui,sans-serif;color:var(--text);background-color:var(--paper);
+background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px}
+main{max-width:640px;margin:0 auto;padding:28px 18px 48px 26px;border-left:2px solid var(--red);min-height:100vh;background:rgba(251,252,254,.82)}
+h1,h2{font-family:"Patrick Hand","Comic Sans MS",cursive;font-weight:400;color:var(--ink);margin:0}
+h1{font-size:2.5rem;line-height:1.1}
+h2{font-size:1.7rem;margin-top:22px}
+header p{margin:6px 0 0;max-width:46ch}
+nav{display:flex;gap:6px;overflow-x:auto;margin:22px -4px 0;padding:4px;scrollbar-width:thin}
+nav button{flex:none;font:inherit;font-size:.95rem;padding:8px 14px;border:1.5px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink);cursor:pointer}
+nav button[aria-selected=true]{background:var(--ink);color:#fff}
+.note{margin:2px 0 14px;color:#4a5570}
+label{display:block;font-size:.95rem;font-weight:700;margin-bottom:12px}
+input,select{display:block;width:100%;margin-top:4px;font:inherit;font-weight:400;padding:10px 12px;border:1.5px solid #9fb0d4;border-radius:8px;background:var(--card);color:var(--text)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+button.add{font:inherit;padding:8px 14px;border:1.5px dashed var(--ink);border-radius:8px;background:none;color:var(--ink);cursor:pointer;margin-bottom:14px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.out{margin-top:8px;padding:14px 16px;background:var(--card);border:1.5px solid var(--ink);border-radius:8px;min-height:64px}
+.big{font-family:"Patrick Hand","Comic Sans MS",cursive;font-size:2rem;line-height:1.2;margin:0 0 6px;word-break:break-word}
+mark{background:linear-gradient(transparent 20%,var(--hl) 20%,var(--hl) 92%,transparent 92%);color:var(--text);padding:0 4px}
+.out ol{margin:6px 0 0;padding-left:22px;color:#3b4560}
+.err{color:#a4261f;margin:0}
+.empty{margin:0;color:#4a5570}
+footer{margin-top:30px;font-size:.9rem;color:#4a5570;max-width:48ch}
+.lv{display:flex;gap:6px;margin-top:22px}
+.lv+nav{margin-top:10px}
+.lv button{flex:1;font-family:"Patrick Hand","Comic Sans MS",cursive;font-size:1.25rem;padding:6px 4px;border:0;border-bottom:3px solid transparent;background:none;color:var(--ink);cursor:pointer}
+.lv button[aria-pressed=true]{border-bottom-color:var(--red)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:8px;margin-bottom:14px}
+.cards button{font-family:"Patrick Hand","Comic Sans MS",cursive;font-size:1.6rem;padding:8px 2px;border:1.5px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink);cursor:pointer}
+.cards button[aria-pressed=true]{background:var(--ink);color:#fff}
+.show{text-align:center;padding:16px;background:var(--card);border:1.5px solid var(--ink);border-radius:8px}
+.show .n{font-family:"Patrick Hand","Comic Sans MS",cursive;font-size:5rem;line-height:1;color:var(--ink)}
+.show .e{font-size:1.9rem;word-break:break-word;letter-spacing:2px}
+@media(max-width:380px){.grid,.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Ayuda para tareas</h1>
+<p>Herramientas con el paso a paso para preescolar, primaria y bachillerato. Úsalas para comprobar lo que ya intentaste.</p>
+</header>
+<div class="lv" id="lv" role="group" aria-label="Nivel escolar"></div>
+<nav id="nav" role="tablist" aria-label="Herramientas"></nav>
+<section id="panel"></section>
+<footer>Revisa siempre tu procedimiento: esta página sirve para comprobar resultados y entender los pasos, no para copiar.</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const N=x=>Number.isFinite(x)?x.toLocaleString('es-CO',{maximumFractionDigits:6}):'—';
+const P=v=>parseFloat(String(v).replace(',','.'));
+const G=(a,b)=>b?G(b,a%b):Math.abs(a);
+const FL=['Numerador 1','Denominador 1','Numerador 2','Denominador 2'];
+
+const T=[
+{id:'fr',name:'Fracciones',note:'Opera dos fracciones y las simplifica.',
+ sel:[['+','Sumar',FL],['-','Restar',FL],['*','Multiplicar',FL],['/','Dividir',FL]],
+ run(op,[a,b,c,d]){
+  if(!b||!d)return{e:'Un denominador no puede ser 0.'};
+  let n,m,s;
+  if(op=='+'){n=a*d+c*b;m=b*d;s=`(${a}×${d} + ${c}×${b}) ÷ (${b}×${d})`}
+  if(op=='-'){n=a*d-c*b;m=b*d;s=`(${a}×${d} − ${c}×${b}) ÷ (${b}×${d})`}
+  if(op=='*'){n=a*c;m=b*d;s=`(${a}×${c}) ÷ (${b}×${d})`}
+  if(op=='/'){if(!c)return{e:'No se puede dividir entre una fracción con numerador 0.'};n=a*d;m=b*c;s=`(${a}×${d}) ÷ (${b}×${c})`}
+  const st=[s+` = ${N(n)}/${N(m)}`];
+  const k=G(n,m)||1;n/=k;m/=k;if(m<0){n=-n;m=-m}
+  if(k>1)st.push(`Simplifica dividiendo arriba y abajo entre ${N(k)}`);
+  st.push(`Como decimal: ${N(n/m)}`);
+  return{r:m==1?N(n):`${N(n)}/${N(m)}`,s:st}}},
+{id:'pc',name:'Porcentajes',note:'Elige qué quieres calcular.',
+ sel:[['p','A% de B',['Porcentaje (A)','Valor (B)']],['q','A es qué % de B',['Valor (A)','Total (B)']],['u','B aumentado en A%',['Porcentaje (A)','Valor (B)']],['d','B con descuento de A%',['Porcentaje (A)','Valor (B)']]],
+ run(o,[a,b]){
+  if(o=='p')return{r:N(a*b/100),s:[`${N(a)}% de ${N(b)} = ${N(a)} × ${N(b)} ÷ 100`]};
+  if(o=='q'){if(!b)return{e:'El total no puede ser 0.'};return{r:N(a/b*100)+'%',s:[`${N(a)} ÷ ${N(b)} × 100`]}}
+  if(o=='u')return{r:N(b*(1+a/100)),s:[`${N(b)} × (1 + ${N(a)}/100)`,`Aumento: ${N(b*a/100)}`]};
+  return{r:N(b*(1-a/100)),s:[`${N(b)} × (1 − ${N(a)}/100)`,`Descuento: ${N(b*a/100)}`]}}},
+{id:'r3',name:'Regla de tres',note:'Si A equivale a B, ¿cuánto equivale C?',
+ sel:[['d','Directa (más es más)',['Si A','equivale a B','Entonces C']],['i','Inversa (más es menos)',['Si A','equivale a B','Entonces C']]],
+ run(o,[a,b,c]){
+  if(o=='d'){if(!a)return{e:'A no puede ser 0.'};return{r:N(b*c/a),s:[`x = B × C ÷ A`,`x = ${N(b)} × ${N(c)} ÷ ${N(a)}`]}}
+  if(!c)return{e:'C no puede ser 0.'};return{r:N(a*b/c),s:[`x = A × B ÷ C`,`x = ${N(a)} × ${N(b)} ÷ ${N(c)}`]}}},
+{id:'cu',name:'Ecuación cuadrática',note:'Resuelve ax² + bx + c = 0.',
+ sel:[['q','Fórmula general',['a','b','c']]],
+ run(o,[a,b,c]){
+  if(!a)return{e:'Si a es 0 no es cuadrática: es lineal, x = −c ÷ b.'};
+  const D=b*b-4*a*c,st=[`Discriminante: b² − 4ac = ${N(D)}`];
+  if(D<0)return{e:`El discriminante es negativo (${N(D)}): no hay soluciones reales.`};
+  const x1=(-b+Math.sqrt(D))/(2*a),x2=(-b-Math.sqrt(D))/(2*a);
+  st.push(`x = (−b ± √D) ÷ 2a`);
+  return{r:D==0?`x = ${N(x1)}`:`x₁ = ${N(x1)}   x₂ = ${N(x2)}`,s:st}}},
+{id:'ge',name:'Geometría',note:'Área y perímetro de figuras comunes.',
+ sel:[['sq','Cuadrado',['Lado']],['re','Rectángulo',['Base','Altura']],['tr','Triángulo',['Base','Altura','Lado 2 (opcional)','Lado 3 (opcional)'],2],['ci','Círculo',['Radio']],['tz','Trapecio',['Base mayor','Base menor','Altura']]],
+ run(o,[a,b,c,d]){
+  const f=x=>N(x);
+  if(o=='sq')return{r:`Área ${f(a*a)}`,s:[`Área = lado² = ${f(a)}²`,`Perímetro = 4 × lado = ${f(4*a)}`]};
+  if(o=='re')return{r:`Área ${f(a*b)}`,s:[`Área = base × altura`,`Perímetro = 2 × (${f(a)} + ${f(b)}) = ${f(2*(a+b))}`]};
+  if(o=='tr'){const s=[`Área = base × altura ÷ 2`];if(!isNaN(c)&&!isNaN(d))s.push(`Perímetro = ${f(a)} + ${f(c)} + ${f(d)} = ${f(a+c+d)}`);return{r:`Área ${f(a*b/2)}`,s}}
+  if(o=='ci')return{r:`Área ${f(Math.PI*a*a)}`,s:[`Área = π × r²`,`Circunferencia = 2 × π × r = ${f(2*Math.PI*a)}`]};
+  return{r:`Área ${f((a+b)*c/2)}`,s:[`Área = (base mayor + base menor) × altura ÷ 2`]}}},
+{id:'tabla',name:'Tablas',note:'Escribe un número y mira su tabla de multiplicar hasta el 12.',
+ sel:[['t','Tabla del número',['Número']]],
+ run(o,[a]){return{r:`Tabla del ${N(a)}`,s:Array.from({length:12},(_,k)=>`${N(a)} × ${k+1} = ${N(a*(k+1))}`)}}},
+{id:'mcd',name:'MCD y mcm',note:'Máximo común divisor, mínimo común múltiplo y factores primos.',
+ sel:[['m','MCD y mcm de dos números',['Número 1','Número 2']],['f','Factores primos',['Número']]],
+ run(o,[a,b]){
+  if(!Number.isInteger(a)||a<1||(o=='m'&&(!Number.isInteger(b)||b<1)))return{e:'Escribe números enteros positivos.'};
+  if(o=='m'){const g=G(a,b);return{r:`MCD ${N(g)}   mcm ${N(a/g*b)}`,s:[`MCD: el mayor número que divide a ${N(a)} y a ${N(b)}`,`mcm = ${N(a)} × ${N(b)} ÷ MCD = ${N(a/g*b)}`]}}
+  const f=[];let n=a;for(let p=2;p*p<=n;p++)while(n%p==0){f.push(p);n/=p}if(n>1)f.push(n);
+  return{r:a==1?'1':f.join(' × '),s:[`Divide ${N(a)} entre primos (2, 3, 5, 7…) hasta llegar a 1`,f.length==1&&a>1?`${N(a)} es un número primo`:`${N(a)} no es primo`]}}},
+{id:'fis',name:'Física',note:'Fórmulas básicas en unidades del sistema internacional (g = 9,8 m/s²).',
+ sel:[
+ ['v','Velocidad = distancia ÷ tiempo',['Distancia (m)','Tiempo (s)']],
+ ['d','Distancia = velocidad × tiempo',['Velocidad (m/s)','Tiempo (s)']],
+ ['t','Tiempo = distancia ÷ velocidad',['Distancia (m)','Velocidad (m/s)']],
+ ['a','Aceleración = (v final − v inicial) ÷ t',['Velocidad inicial (m/s)','Velocidad final (m/s)','Tiempo (s)']],
+ ['f','Fuerza = masa × aceleración',['Masa (kg)','Aceleración (m/s²)']],
+ ['p','Peso = masa × gravedad',['Masa (kg)']],
+ ['cl','Caída libre desde una altura',['Altura (m)']],
+ ['ec','Energía cinética = ½ m v²',['Masa (kg)','Velocidad (m/s)']],
+ ['ep','Energía potencial = m g h',['Masa (kg)','Altura (m)']],
+ ['rho','Densidad = masa ÷ volumen',['Masa (kg)','Volumen (m³)']],
+ ['V','Ley de Ohm: voltaje = I × R',['Corriente (A)','Resistencia (Ω)']],
+ ['I','Ley de Ohm: corriente = V ÷ R',['Voltaje (V)','Resistencia (Ω)']]],
+ run(o,[a,b,c]){
+  let r;
+  switch(o){
+  case'v':if(!b)return E0;r=[a/b,'m/s',`v = d ÷ t = ${N(a)} ÷ ${N(b)}`];break;
+  case'd':r=[a*b,'m',`d = v × t = ${N(a)} × ${N(b)}`];break;
+  case't':if(!b)return E0;r=[a/b,'s',`t = d ÷ v = ${N(a)} ÷ ${N(b)}`];break;
+  case'a':if(!c)return E0;r=[(b-a)/c,'m/s²',`a = (${N(b)} − ${N(a)}) ÷ ${N(c)}`];break;
+  case'f':r=[a*b,'N',`F = m × a = ${N(a)} × ${N(b)}`];break;
+  case'p':r=[a*9.8,'N',`P = m × g = ${N(a)} × 9,8`];break;
+  case'cl':{if(a<0)return{e:'La altura no puede ser negativa.'};const t=Math.sqrt(2*a/9.8);return{r:`${N(t)} s`,s:[`Tiempo: t = √(2h ÷ g) = √(2 × ${N(a)} ÷ 9,8)`,`Velocidad al llegar: v = g × t = ${N(9.8*t)} m/s`]}}
+  case'ec':r=[.5*a*b*b,'J',`Ec = ½ × ${N(a)} × ${N(b)}²`];break;
+  case'ep':r=[a*9.8*b,'J',`Ep = m × g × h = ${N(a)} × 9,8 × ${N(b)}`];break;
+  case'rho':if(!b)return E0;r=[a/b,'kg/m³',`ρ = m ÷ V = ${N(a)} ÷ ${N(b)}`];break;
+  case'V':r=[a*b,'V',`V = I × R = ${N(a)} × ${N(b)}`];break;
+  case'I':if(!b)return E0;r=[a/b,'A',`I = V ÷ R = ${N(a)} ÷ ${N(b)}`];break;}
+  return{r:`${N(r[0])} ${r[1]}`,s:[r[2]]}}},
+{id:'qui',name:'Química',note:'Masa molar, moles, pH y disoluciones.',
+ sel:[
+ ['mm','Masa molar de una fórmula',['Fórmula (ej. H2O, Ca(OH)2)'],1,1],
+ ['mol','Moles = masa ÷ masa molar',['Masa (g)','Masa molar (g/mol)']],
+ ['g','Masa = moles × masa molar',['Moles','Masa molar (g/mol)']],
+ ['M','Molaridad = moles ÷ litros',['Moles de soluto','Litros de solución']],
+ ['ph','pH = −log [H⁺]',['[H⁺] (mol/L)']],
+ ['h','[H⁺] a partir del pH',['pH']],
+ ['dil','Dilución: V₂ = C₁ V₁ ÷ C₂',['C₁ (inicial)','V₁ (inicial)','C₂ (final)']],
+ ['gas','Gas ideal: P = n R T ÷ V',['Moles (n)','Temperatura (K)','Volumen (L)']]],
+ run(o,[a,b,c]){
+  if(o=='mm'){try{const x=F(a.replace(/\s/g,'')),st=[];let t=0;for(const e in x){const m=x[e]*AM[e];t+=m;st.push(`${e}: ${x[e]} × ${AM[e]} = ${N(m)}`)}if(!st.length)throw 0;return{r:`${N(t)} g/mol`,s:st}}catch(z){return{e:'No pude leer la fórmula. Usa símbolos con mayúscula inicial, por ejemplo H2O, NaCl o Ca(OH)2.'}}}
+  if(['mol','M'].includes(o)&&!b||o=='dil'&&!c||o=='gas'&&!c)return E0;
+  if(o=='mol')return{r:`${N(a/b)} mol`,s:[`n = m ÷ M = ${N(a)} ÷ ${N(b)}`]};
+  if(o=='g')return{r:`${N(a*b)} g`,s:[`m = n × M = ${N(a)} × ${N(b)}`]};
+  if(o=='M')return{r:`${N(a/b)} mol/L`,s:[`M = n ÷ V = ${N(a)} ÷ ${N(b)}`]};
+  if(o=='ph'){if(a<=0)return{e:'La concentración debe ser mayor que 0.'};const p=-Math.log10(a);return{r:`pH ${N(p)}`,s:[`pH = −log(${a})`,p<7?'Menor que 7: es ácida':p>7?'Mayor que 7: es básica':'Igual a 7: es neutra']}}
+  if(o=='h')return{r:`${(10**-a).toExponential(2).replace('.',',')} mol/L`,s:[`[H⁺] = 10^(−${N(a)})`]};
+  if(o=='dil')return{r:`${N(a*b/c)} (misma unidad que V₁)`,s:[`C₁ × V₁ = C₂ × V₂, así que V₂ = ${N(a)} × ${N(b)} ÷ ${N(c)}`]};
+  return{r:`${N(a*.082*b/c)} atm`,s:[`P = n × R × T ÷ V, con R = 0,082 atm·L/(mol·K)`,`P = ${N(a)} × 0,082 × ${N(b)} ÷ ${N(c)}`]}}},
+{id:'dib',name:'Sumas con dibujos',note:'Cuenta los dibujos para sumar o restar (del 0 al 10).',
+ sel:[['s','Sumar',['Primer número','Segundo número']],['r','Restar',['Número inicial','Cuántos quitas']]],
+ run(o,[a,b]){
+  if(![a,b].every(x=>Number.isInteger(x)&&x>=0&&x<=10))return{e:'Usa números enteros del 0 al 10.'};
+  if(o=='r'&&b>a)return{e:'No puedes quitar más de los que hay.'};
+  const e='🍎',r=o=='s'?a+b:a-b;
+  return o=='s'?{r:`${a} + ${b} = ${r}`,s:[`${e.repeat(a)} y ${e.repeat(b)}`,`Cuenta todos juntos: ${r}`]}
+   :{r:`${a} − ${b} = ${r}`,s:[`Empiezas con ${e.repeat(a)}`,`Quitas ${b} y te quedan ${r}`]}}},
+{id:'nt',name:'Notas',custom:1},
+{id:'pre',name:'Contar y aprender',custom:3},
+{id:'cv',name:'Conversor',custom:2}
+];
+
+const U={
+ 'Longitud':{km:1000,m:1,cm:.01,mm:.001,milla:1609.344,pie:.3048,pulgada:.0254},
+ 'Masa':{t:1000,kg:1,g:.001,mg:1e-6,libra:.45359237,onza:.028349523},
+ 'Tiempo':{día:86400,hora:3600,minuto:60,segundo:1,milisegundo:.001},
+ 'Volumen':{'m³':1000,L:1,mL:.001,'galón (EE. UU.)':3.785411784},
+ 'Temperatura':{'°C':1,'°F':1,'K':1}
+};
+
+const E0={e:'No se puede dividir entre 0.'};
+const AM={H:1.008,He:4.0026,Li:6.94,Be:9.0122,B:10.81,C:12.011,N:14.007,O:15.999,F:18.998,Ne:20.18,Na:22.99,Mg:24.305,Al:26.982,Si:28.085,P:30.974,S:32.06,Cl:35.45,Ar:39.948,K:39.098,Ca:40.078,Mn:54.938,Fe:55.845,Co:58.933,Ni:58.693,Cu:63.546,Zn:65.38,Br:79.904,Ag:107.87,Sn:118.71,I:126.9,Ba:137.33,Au:196.97,Hg:200.59,Pb:207.2};
+function F(f){
+ let i=0;const num=()=>{let s='';while(/\d/.test(f[i]||''))s+=f[i++];return s?+s:1};
+ const grp=()=>{const o={};while(i<f.length){const c=f[i];
+  if(c=='('){i++;const s=grp(),n=num();for(const k in s)o[k]=(o[k]||0)+s[k]*n}
+  else if(c==')'){i++;return o}
+  else if(/[A-Z]/.test(c)){let e=c;i++;while(/[a-z]/.test(f[i]||''))e+=f[i++];if(!AM[e])throw e;o[e]=(o[e]||0)+num()}
+  else throw c}return o};
+ return grp()}
+const sp=t=>{try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='es-ES';u.rate=.8;speechSynthesis.speak(u)}catch(e){}};
+const W='uno,dos,tres,cuatro,cinco,seis,siete,ocho,nueve,diez,once,doce,trece,catorce,quince,dieciséis,diecisiete,dieciocho,diecinueve,veinte'.split(',');
+const sp2=s=>s.split(';').map(x=>x.split('|'));
+const S={
+ 'Números':W.map((w,k)=>[k+1,'⭐'.repeat(k+1),w,w]),
+ 'Letras':sp2('A|✈️|avión;B|🚲|bicicleta;C|🏠|casa;D|🐬|delfín;E|🐘|elefante;F|🌸|flor;G|🐱|gato;H|🥚|huevo;I|🏝️|isla;J|🦒|jirafa;K|🥝|kiwi;L|🦁|león;M|🍎|manzana;N|☁️|nube;Ñ|🍝|ñoquis;O|🐻|oso;P|🐶|perro;Q|🧀|queso;R|🐭|ratón;S|☀️|sol;T|🐢|tortuga;U|🍇|uvas;V|🐄|vaca;W|🧇|waffle;X|🎶|xilófono;Y|⛵|yate;Z|🦊|zorro').map(([l,e,w])=>[l,e,w,`${l} de ${w}`]),
+ 'Colores':sp2('🟥|rojo;🟦|azul;🟨|amarillo;🟩|verde;🟧|naranja;🟪|morado;🟫|café;⬛|negro;⬜|blanco').map(([l,w])=>[l,'',w,w]),
+ 'Formas':sp2('🔵|círculo;🟦|cuadrado;🔺|triángulo;⭐|estrella;❤️|corazón;🔶|rombo').map(([l,w])=>[l,'',w,w])
+};
+const LV={e:['pre','dib'],p:['tabla','mcd','fr','pc','r3','ge','cv','nt','dib'],b:['cu','r3','pc','fr','mcd','ge','fis','qui','cv','nt']};
+const LN={e:'Preescolar',p:'Primaria',b:'Bachillerato'};
+const nav=$('nav'),panel=$('panel'),lvb=$('lv');
+let lv='p';
+function setLv(l){
+ lv=l;[...lvb.children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.l==l));
+ nav.innerHTML='';
+ LV[l].forEach(id=>{const t=T.find(x=>x.id==id),b=document.createElement('button');b.textContent=t.name;b.setAttribute('role','tab');b.onclick=()=>show(id);nav.appendChild(b)});
+ show(LV[l][0])}
+Object.keys(LN).forEach(l=>{const b=document.createElement('button');b.textContent=LN[l];b.dataset.l=l;b.onclick=()=>setLv(l);lvb.appendChild(b)});
+
+function res(el,r){
+ el.innerHTML=r.e?`<p class="err">${r.e}</p>`:`<p class="big"><mark>${r.r}</mark></p><ol>${r.s.map(x=>`<li>${x}</li>`).join('')}</ol>`}
+
+function pre(){
+ panel.innerHTML='<h2>Contar y aprender</h2><p class="note">Toca una tarjeta para verla y escucharla.</p><nav id="sub"></nav><div class="cards" id="cards"></div><div class="show" id="sh" aria-live="polite"></div>';
+ const sub=$('sub'),cards=$('cards'),hint='<p class="empty">Toca una tarjeta.</p>';
+ let k='Números',sel=-1;
+ const draw=()=>{
+  sub.innerHTML='';
+  Object.keys(S).forEach(n=>{const b=document.createElement('button');b.textContent=n;b.setAttribute('aria-selected',n==k);b.onclick=()=>{k=n;sel=-1;draw()};sub.appendChild(b)});
+  cards.innerHTML='';
+  S[k].forEach((it,j)=>{const b=document.createElement('button');b.textContent=it[0];b.setAttribute('aria-pressed',j==sel);b.onclick=()=>{sel=j;draw();sp(it[3])};cards.appendChild(b)});
+  const it=S[k][sel];
+  $('sh').innerHTML=it?`<div class="n">${it[0]}</div><div class="e">${it[1]}</div><p class="big">${it[2]}</p><button class="add" id="say" type="button">Escuchar otra vez</button>`:hint;
+  if(it)$('say').onclick=()=>sp(it[3])};
+ draw()}
+
+function show(id){
+ const t=T.find(x=>x.id==id);
+ [...nav.children].forEach((b,k)=>b.setAttribute('aria-selected',LV[lv][k]==id));
+ if(t.custom==1)return notas(t);
+ if(t.custom==2)return conv(t);
+ if(t.custom==3)return pre();
+ panel.innerHTML=`<h2>${t.name}</h2><p class="note">${t.note}</p>
+ <label>Tipo<select id="sel">${t.sel.map(o=>`<option value="${o[0]}">${o[1]}</option>`).join('')}</select></label>
+ <div class="grid">${[0,1,2,3].map(k=>`<label id="l${k}"><span></span><input id="i${k}" inputmode="decimal" autocomplete="off"></label>`).join('')}</div>
+ <div class="out" id="out" aria-live="polite"></div>`;
+ const upd=()=>{
+  const o=t.sel.find(x=>x[0]==$('sel').value),L=o[2],req=o[3]||L.length;
+  for(let k=0;k<4;k++){$('l'+k).style.display=k<L.length?'':'none';$('l'+k).firstChild.textContent=L[k]||''}
+  const tx=o[4];for(let k=0;k<4;k++)$('i'+k).inputMode=tx?'text':'decimal';
+  const v=L.map((_,k)=>tx?$('i'+k).value.trim():P($('i'+k).value));
+  if(v.slice(0,req).some(x=>tx?!x:isNaN(x)))$('out').innerHTML='<p class="empty">Completa los datos para ver el resultado y los pasos.</p>';
+  else res($('out'),t.run(o[0],v))};
+ panel.oninput=panel.onchange=upd;upd()}
+
+function notas(t){
+ panel.innerHTML=`<h2>Promedio de notas</h2><p class="note">Escribe cada nota y lo que vale (en %). Si falta una nota, calculo cuánto necesitas.</p>
+ <div id="rows"></div><button class="add" id="add" type="button">Agregar nota</button>
+ <label>Nota que quieres lograr (opcional)<input id="meta" inputmode="decimal" autocomplete="off"></label>
+ <div class="out" id="out" aria-live="polite"></div>`;
+ const rows=$('rows');
+ const add=()=>{const d=document.createElement('div');d.className='row';d.innerHTML='<label>Nota<input inputmode="decimal" autocomplete="off"></label><label>Peso (%)<input inputmode="decimal" autocomplete="off"></label>';rows.appendChild(d)};
+ [1,2,3].forEach(add);$('add').onclick=add;
+ const upd=()=>{
+  let sw=0,sn=0;
+  [...rows.children].forEach(r=>{const n=P(r.children[0].lastChild.value),w=P(r.children[1].lastChild.value);if(!isNaN(n)&&!isNaN(w)){sw+=w;sn+=n*w}});
+  if(!sw){$('out').innerHTML='<p class="empty">Escribe al menos una nota con su peso.</p>';return}
+  const st=[`Peso evaluado: ${N(sw)}%`,`Suma de nota × peso ÷ pesos = ${N(sn)} ÷ ${N(sw)}`];
+  const m=P($('meta').value);
+  if(!isNaN(m)){
+   if(sw>=100)st.push('Ya está evaluado el 100%: no queda nada por mejorar.');
+   else st.push(`Para llegar a ${N(m)} necesitas sacar ${N((m*100-sn)/(100-sw))} en el ${N(100-sw)}% restante.`)}
+  res($('out'),{r:N(sn/sw),s:st})};
+ panel.oninput=upd;panel.onchange=null;upd()}
+
+function conv(t){
+ const cats=Object.keys(U);
+ panel.innerHTML=`<h2>${t.name}</h2><p class="note">Convierte entre unidades de la misma magnitud.</p>
+ <label>Magnitud<select id="cat">${cats.map(c=>`<option>${c}</option>`).join('')}</select></label>
+ <label>Valor<input id="val" inputmode="decimal" autocomplete="off"></label>
+ <div class="grid"><label>De<select id="fr"></select></label><label>A<select id="to"></select></label></div>
+ <div class="out" id="out" aria-live="polite"></div>`;
+ const fill=()=>{const u=Object.keys(U[$('cat').value]);$('fr').innerHTML=u.map(x=>`<option>${x}</option>`).join('');$('to').innerHTML=u.map(x=>`<option>${x}</option>`).join('');$('to').selectedIndex=Math.min(1,u.length-1)};
+ const upd=()=>{
+  const c=$('cat').value,v=P($('val').value),a=$('fr').value,b=$('to').value;
+  if(isNaN(v)){$('out').innerHTML='<p class="empty">Escribe un valor para convertir.</p>';return}
+  let r,s;
+  if(c=='Temperatura'){
+   const C=a=='°C'?v:a=='°F'?(v-32)*5/9:v-273.15;
+   r=b=='°C'?C:b=='°F'?C*9/5+32:C+273.15;s=[`Pasa a °C: ${N(C)} °C, y de ahí a ${b}`]}
+  else{const f=U[c];r=v*f[a]/f[b];s=[`1 ${a} = ${N(f[a]/f[b])} ${b}`]}
+  res($('out'),{r:`${N(r)} ${b}`,s})};
+ fill();panel.oninput=upd;panel.onchange=e=>{if(e.target.id=='cat')fill();upd()};upd()}
+
+setLv('p');
+</script>
+</body>
+</html>
